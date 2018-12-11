@@ -209,7 +209,7 @@ for j in range(ITERATIONS):
 
 
 	if(j>START_LIMIT and j%STEPS_BEFORE_GRADIENT_DESCENT==0):
-		print("Enter train")
+		# print("Enter train")
 		rewards = np.zeros(MINIBATCH_SIZE)
 		terminal = np.zeros(MINIBATCH_SIZE)
 		one_hot_encoding = np.zeros((MINIBATCH_SIZE, NUM_ACTIONS))
