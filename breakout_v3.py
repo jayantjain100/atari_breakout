@@ -16,19 +16,20 @@ from keras.layers import Maximum
 from keras.layers import Lambda
 from keras import backend 
 from matplotlib import pyplot as plt  
+import time
 
-BUFFER_SIZE=10000
+BUFFER_SIZE=500000
 NUM_ACTIONS=4
-FRAME_INPUT_SHAPE= (4,105,80) #(CHannels x Height x width)
-ITERATIONS= 50000
-DECREASE_RATE= 10000
+FRAME_INPUT_SHAPE= (4,80,72) #(CHannels x Height x width)
+ITERATIONS= 50000000
+DECREASE_RATE= 1000000
 MINIBATCH_SIZE=32
 GAMMA=0.99
-START_LIMIT = 500
-C= 100
+START_LIMIT = 50000
+C= 10000
 STEPS_BEFORE_GRADIENT_DESCENT=1
-STAGE_ITERATION = 5000 # store a stage after these many iteration
-EPSILON_INFO = 1000 #printing epsilon info after every these many iterations
+STAGE_ITERATION = 500000 # store a stage after these many iteration
+EPSILON_INFO = 50000 #printing epsilon info after every these many iterations
 #HARD: making it specific to breakout abhi ke liye
 alpha= 0.01
 # class transition():
@@ -76,11 +77,22 @@ def to_grayscale(img):
 	#THINK: potential miss of data- larger set to smaller set mapping, ill make an image jiska graycale ek cheez hoga, but uss image mei kaafi colours honnge
 	#.astype yeh karta hai ki - online - Copy of the array, cast to a specified type.
 	#so we just reduced the space used
+def cutter(img):
+	return img[17:97,4:76]
+
+def binarise(img):
+	for i in range(img.shape[1]):
+		for j in range(img.shape[0]):
+			temp = img[j][i] 
+			# print (temp)
+			if temp > 0 :
+				img[j][i]=255
+	return img
 
 def preprocess(img):
 	#input : 210 x 160 x 3
 	#output : (105,80, )
-	return to_grayscale(halve_resolution(img))
+	return binarise(cutter(to_grayscale(halve_resolution(img))))
 
 def transform_reward(reward):
 	return np.sign(reward)
@@ -99,13 +111,14 @@ mask_input = Input((NUM_ACTIONS, ))
 
 
 #THINK: jo neeche yeh socha hua hai, this is the real thing? ya yeh sochna chill hai
-convolution1 = Conv2D(filters=16, kernel_size=(8,8),strides=(4,4), activation="relu", data_format='channels_first')(frames_input)
-convolution2 = Conv2D(filters=32, kernel_size=(4,4),strides= (2,2), activation="relu", data_format='channels_first')(convolution1)
-#i forgot this line!!!!
+convolution1 = Conv2D(filters=8, kernel_size=(8,8),strides=(4,4), activation="relu", data_format='channels_first')(frames_input)
+convolution2 = Conv2D(filters=16, kernel_size=(4,4),strides= (2,2), activation="relu", data_format='channels_first')(convolution1)
+# convolution3 = Conv2D(filters=64, kernel_size=(3,3),strides= (1,1), activation="relu", data_format='channels_first')(convolution2)
+#i forgot this line!!!2
 flattened = Flatten()(convolution2)
 normaliser = Lambda(lambda x: (x*1.)/255.0 )(flattened)
 #custom functions
-hidden1 = Dense(256, activation="relu")(normaliser)
+hidden1 = Dense(128, activation="relu")(normaliser)
 hidden2 = Dense(NUM_ACTIONS)(hidden1)
 masked_output = multiply([mask_input,hidden2])
 
@@ -117,14 +130,14 @@ model.compile(loss= huber_loss, optimizer= optim)
 
 #fixing the buffer to incorporate frames
 if(len(sys.argv)>1 and sys.argv[1]=="cont"):
-	model= load_model('training/load_light_v0.h5', custom_objects={'huber_loss': huber_loss})
+	model= load_model('training/light_v0_part1.h5', custom_objects={'huber_loss': huber_loss})
 	print("loaded existing model, continuing training")
 
 target_model = copy_model(model)
 #main iteration
 env = gym.make('BreakoutDeterministic-v4')
-initial_state_array= np.zeros((MINIBATCH_SIZE, 4, 105, 80))
-next_state_array= np.zeros((MINIBATCH_SIZE, 4, 105, 80))
+initial_state_array= np.zeros((MINIBATCH_SIZE, 4, 80, 72))
+next_state_array= np.zeros((MINIBATCH_SIZE, 4, 80, 72))
 
 
 #faltu initialisation data point 
@@ -138,6 +151,7 @@ env.reset()
 previous_num_lives=5
 epsilon=1 #greed metric
 average_predicted_q=0
+start = time.time()
 
 for j in range(ITERATIONS):
 	# env.render()
@@ -147,12 +161,15 @@ for j in range(ITERATIONS):
 
 
 	if(j%10000==0):
-		print("check RAM, buffer percent filled = ", (j*1./BUFFER_SIZE)*(100), "%")
-		print("iterations ", j)
+		# print("check RAM, buffer percent filled = ", (j*1./BUFFER_SIZE)*(100), "%")
+		end=time.time()
+		print("iterations ", j, "time elapsed for these iterations was - ", (end-start))
+		start = end
+
 
 	if(j%EPSILON_INFO==0):
 		print("exploration factor- ", epsilon)
-		print("aeverage_predicted_q- ", average_predicted_q)
+		print("average_predicted_q- ", average_predicted_q)
 	if(j%STAGE_ITERATION==0):
 		print("CHECKPOINT REACHED-----------Stage Complete: ",j/STAGE_ITERATION)
 		model.save("training/light_v0_part"+str((int)(j/STAGE_ITERATION))+".h5")
@@ -179,15 +196,15 @@ for j in range(ITERATIONS):
 	# print(live_dict)
 	new_lives= live_dict['ale.lives']
 
-	if(previous_num_lives> new_lives):
-		reward = reward - (0.4)**(5-new_lives)**2
-		if(new_lives>5):
-			print("ERROR________________________________________")
-	previous_num_lives= new_lives
+	# if(previous_num_lives> new_lives):
+	# 	# reward = reward - (0.4)**(5-new_lives)**2
+	# 	if(new_lives>5):
+	# 		print("ERROR________________________________________")
+	# previous_num_lives= new_lives
 	if(termination):
 		fresh_frame= env.reset()
 		env.step(0) #to start a new game
-		reward = -5
+		# reward = -5
 		# reward = -5
 		
 
@@ -195,7 +212,7 @@ for j in range(ITERATIONS):
 
 
 	if(j>START_LIMIT and j%STEPS_BEFORE_GRADIENT_DESCENT==0):
-		print("Enter train")
+		# print("Enter train")
 		rewards = np.zeros(MINIBATCH_SIZE)
 		terminal = np.zeros(MINIBATCH_SIZE)
 		one_hot_encoding = np.zeros((MINIBATCH_SIZE, NUM_ACTIONS))

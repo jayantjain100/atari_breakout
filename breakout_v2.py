@@ -34,8 +34,8 @@ from matplotlib import pyplot as plt
 BUFFER_SIZE=10000
 NUM_ACTIONS=4
 FRAME_INPUT_SHAPE= (4,105,80) #(CHannels x Height x width)
-ITERATIONS= 50000
-DECREASE_RATE= 10000
+ITERATIONS= 500000
+DECREASE_RATE= 100000
 MINIBATCH_SIZE=32
 GAMMA=0.99
 START_LIMIT = 500
@@ -131,7 +131,7 @@ model.compile(loss= huber_loss, optimizer= optim)
 
 #fixing the buffer to incorporate frames
 if(len(sys.argv)>1 and sys.argv[1]=="cont"):
-	model= load_model('training/load_light_v0.h5', custom_objects={'huber_loss': huber_loss})
+	model= load_model('training/light_v0_part6.h5', custom_objects={'huber_loss': huber_loss})
 	print("loaded existing model, continuing training")
 
 target_model = copy_model(model)

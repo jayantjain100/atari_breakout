@@ -149,10 +149,10 @@ def huber_loss(a, b, in_keras=True):
 # model.compile(loss= "mse", optimizer= "RMSprop")
 
 # if(len(sys.argv)>1 and sys.argv[1]=="cont"):
-model= load_model('training/light_v0_part6.h5',custom_objects={'huber_loss': huber_loss})
+model= load_model('training/light_v0_full.h5',custom_objects={'huber_loss': huber_loss})
 
 #main iteration
-env = gym.make('Breakout-v0')
+env = gym.make('BreakoutDeterministic-v4')
 frame = env.reset() #initial frame
 env.step(1)
 frame= preprocess(frame)
@@ -210,7 +210,7 @@ for j in range(ITERATIONS):
 	state= state_new	
 	#THINK: the extra info being returned?
 	l=0
-	while l<30000:
+	while l<300000:
 		l=l+1
 
 # 	if(j>BUFFER_SIZE):
